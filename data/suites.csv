@@ -1,0 +1,3 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Logs in with a valid user and asserts the inventory page title, product count, and that a known product is listed.","765","Standard user can log in and sees the expected inventory","Selenium Demo Suite","2026-06-20","passed","2026-06-20","com.example.tests.LoginTest","Sauce Demo Tests","com.example.tests.LoginTest","standardUserSeesInventoryAfterLogin"
+"Logs in with the locked_out_user and asserts the correct error is shown.","837","Locked out user sees an error message","Selenium Demo Suite","2026-06-20","passed","2026-06-20","com.example.tests.LoginTest","Sauce Demo Tests","com.example.tests.LoginTest","lockedOutUserSeesError"

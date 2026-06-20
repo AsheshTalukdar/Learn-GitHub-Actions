@@ -1,0 +1,1 @@
+[{"uid":"c78e9556709d4d91","name":"Standard user can log in and sees the expected inventory","time":{"start":1781989561866,"stop":1781989562631,"duration":765},"status":"passed","severity":"critical"},{"uid":"894c5a11d5f5f813","name":"Locked out user sees an error message","time":{"start":1781989560457,"stop":1781989561294,"duration":837},"status":"passed","severity":"normal"}]
