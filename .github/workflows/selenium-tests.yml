@@ -1,38 +1,39 @@
 name: Selenium TestNG Allure CI
 
-# ─────────────────────────────────────────────────────────────────
-# WHEN DOES THIS WORKFLOW RUN? ("triggers")
-# This whole "on:" block is the GitHub Actions equivalent of Jenkins
-# "Build Triggers" (poll SCM, cron, build now, etc.)
-# ─────────────────────────────────────────────────────────────────
+permissions:
+  contents: write
+
 on:
-  # 1) AUTOMATIC — runs every time someone pushes to main
+
   push:
-    branches: [ main ]
+    branches:
+      - main
 
-  # 2) AUTOMATIC — runs on every pull request targeting main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
-  # 3) SCHEDULED — runs by itself on a cron schedule, like a Jenkins
-  #    cron trigger. This example runs every day at 02:00 UTC.
-  #    Delete this block if you don't want a nightly run.
   schedule:
     - cron: '0 2 * * *'
 
-  # 4) MANUAL — this is what adds the green "Run workflow" button on
-  #    the Actions tab, with input fields you fill in before running.
-  #    This is the direct equivalent of Jenkins "Build with Parameters".
   workflow_dispatch:
     inputs:
+
+      branch:
+        description: 'Branch to checkout and test'
+        required: true
+        default: 'main'
+        type: string
+
       browser:
-        description: 'Browser to run tests on'
+        description: 'Browser'
         required: true
         default: 'chrome'
         type: choice
         options:
           - chrome
           - firefox
+
       headless:
         description: 'Run headless?'
         required: true
@@ -43,30 +44,32 @@ on:
           - 'false'
 
 jobs:
+
   test:
-    runs-on: ubuntu-latest   # the "agent" — GitHub gives you a fresh VM for every run
+
+    runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven   # caches ~/.m2 between runs so builds are faster
+          cache: maven
 
-      # github.event.inputs.* is only populated on a manual (workflow_dispatch)
-      # run. On push/PR/schedule runs it's empty, so "|| 'chrome'" supplies
-      # a default — same idea as a Jenkins parameter having a default value.
-      - name: Run tests
+      - name: Run Tests
         run: |
           mvn clean test \
             -Dbrowser=${{ github.event.inputs.browser || 'chrome' }} \
             -Dheadless=${{ github.event.inputs.headless || 'true' }}
 
-      - name: Load previous report history (for trend graphs)
+      - name: Load Previous Allure History
         uses: actions/checkout@v4
         if: always()
         continue-on-error: true
@@ -74,15 +77,15 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      - name: Generate Allure report
+      - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
-        if: always()   # generate the report even if tests failed
+        if: always()
         with:
           allure_results: allure-results
           allure_history: allure-history
           keep_reports: 20
 
-      - name: Upload Allure report as a build artifact
+      - name: Upload Allure Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -90,14 +93,16 @@ jobs:
           path: allure-history
           retention-days: 20
 
-      # OPTIONAL: publishes the report to GitHub Pages so you get a
-      # shareable URL instead of downloading a zip every time.
-      # Requires: Settings -> Pages -> Source: gh-pages branch, and
-      # Settings -> Actions -> General -> Workflow permissions: Read and write.
-      - name: Publish report to GitHub Pages
+      - name: Publish To GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: always()
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+
+      - name: Add report link to summary
+        if: always()
+        run: |
+          echo "## Allure Report" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
