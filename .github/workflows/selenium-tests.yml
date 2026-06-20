@@ -69,13 +69,16 @@ jobs:
             -Dbrowser=${{ github.event.inputs.browser || 'chrome' }} \
             -Dheadless=${{ github.event.inputs.headless || 'true' }}
 
-      - name: Load Previous Allure History
+      - name: Create empty history folder if not exists
+        run: mkdir -p gh-pages
+
+      - name: Load previous report history
         uses: actions/checkout@v4
-        if: always()
         continue-on-error: true
         with:
           ref: gh-pages
           path: gh-pages
+          fetch-depth: 1
 
       - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
