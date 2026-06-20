@@ -1,0 +1,103 @@
+name: Selenium TestNG Allure CI
+
+# ─────────────────────────────────────────────────────────────────
+# WHEN DOES THIS WORKFLOW RUN? ("triggers")
+# This whole "on:" block is the GitHub Actions equivalent of Jenkins
+# "Build Triggers" (poll SCM, cron, build now, etc.)
+# ─────────────────────────────────────────────────────────────────
+on:
+  # 1) AUTOMATIC — runs every time someone pushes to main
+  push:
+    branches: [ main ]
+
+  # 2) AUTOMATIC — runs on every pull request targeting main
+  pull_request:
+    branches: [ main ]
+
+  # 3) SCHEDULED — runs by itself on a cron schedule, like a Jenkins
+  #    cron trigger. This example runs every day at 02:00 UTC.
+  #    Delete this block if you don't want a nightly run.
+  schedule:
+    - cron: '0 2 * * *'
+
+  # 4) MANUAL — this is what adds the green "Run workflow" button on
+  #    the Actions tab, with input fields you fill in before running.
+  #    This is the direct equivalent of Jenkins "Build with Parameters".
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to run tests on'
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+      headless:
+        description: 'Run headless?'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest   # the "agent" — GitHub gives you a fresh VM for every run
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven   # caches ~/.m2 between runs so builds are faster
+
+      # github.event.inputs.* is only populated on a manual (workflow_dispatch)
+      # run. On push/PR/schedule runs it's empty, so "|| 'chrome'" supplies
+      # a default — same idea as a Jenkins parameter having a default value.
+      - name: Run tests
+        run: |
+          mvn clean test \
+            -Dbrowser=${{ github.event.inputs.browser || 'chrome' }} \
+            -Dheadless=${{ github.event.inputs.headless || 'true' }}
+
+      - name: Load previous report history (for trend graphs)
+        uses: actions/checkout@v4
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Generate Allure report
+        uses: simple-elf/allure-report-action@master
+        if: always()   # generate the report even if tests failed
+        with:
+          allure_results: allure-results
+          allure_history: allure-history
+          keep_reports: 20
+
+      - name: Upload Allure report as a build artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-report
+          path: allure-history
+          retention-days: 20
+
+      # OPTIONAL: publishes the report to GitHub Pages so you get a
+      # shareable URL instead of downloading a zip every time.
+      # Requires: Settings -> Pages -> Source: gh-pages branch, and
+      # Settings -> Actions -> General -> Workflow permissions: Read and write.
+      - name: Publish report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
