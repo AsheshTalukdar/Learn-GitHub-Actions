@@ -1,64 +1,134 @@
+#name: Selenium TestNG Allure CI
+#
+#permissions:
+#  contents: write
+#
+#on:
+#
+#  push:
+#    branches:
+#      - main
+#
+#  pull_request:
+#    branches:
+#      - main
+#
+#  workflow_dispatch:
+#    inputs:
+#
+#      branch:
+#        description: 'Branch to checkout'
+#        required: true
+#        default: 'main'
+#        type: string
+#
+#      browser:
+#        description: 'Browser'
+#        required: true
+#        default: 'chrome'
+#        type: choice
+#        options:
+#          - chrome
+#          - firefox
+#
+#      headless:
+#        description: 'Headless mode'
+#        required: true
+#        default: 'true'
+#        type: choice
+#        options:
+#          - 'true'
+#          - 'false'
+#
+#jobs:
+#
+#  test:
+#
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#
+#      # -------------------------
+#      # Checkout
+#      # -------------------------
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#        with:
+#          ref: ${{ github.event.inputs.branch || github.ref }}
+#
+#      # -------------------------
+#      # Java
+#      # -------------------------
+#      - name: Set up JDK 17
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: '17'
+#          cache: maven
+#
+#      # -------------------------
+#      # Run tests
+#      # -------------------------
+#      - name: Run Tests
+#        run: |
+#          mvn clean test \
+#            -Dbrowser=${{ github.event.inputs.browser || 'chrome' }} \
+#            -Dheadless=${{ github.event.inputs.headless || 'true' }}
+#
+#      # -------------------------
+#      # Generate Allure report
+#      # -------------------------
+#      - name: Generate Allure Report
+#        uses: simple-elf/allure-report-action@master
+#        if: always()
+#        with:
+#          allure_results: allure-results
+#          allure_report: allure-report
+#          allure_history: allure-history
+#
+#      # -------------------------
+#      # Publish directly (IMPORTANT FIX)
+#      # -------------------------
+#      - name: Deploy to GitHub Pages
+#        uses: peaceiris/actions-gh-pages@v3
+#        if: always()
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          publish_branch: gh-pages
+#          publish_dir: allure-report
+#          force_orphan: true
+#
+#      # -------------------------
+#      # Summary link
+#      # -------------------------
+#      - name: Add report link
+#        if: always()
+#        run: |
+#          echo "## Allure Report" >> $GITHUB_STEP_SUMMARY
+#          echo "" >> $GITHUB_STEP_SUMMARY
+#          echo "👉 [Open Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
+
 name: Selenium TestNG Allure CI
 
 permissions:
   contents: write
 
 on:
-
   push:
-    branches:
-      - main
-
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
-
+    branches: [ main ]
   workflow_dispatch:
-    inputs:
-
-      branch:
-        description: 'Branch to checkout'
-        required: true
-        default: 'main'
-        type: string
-
-      browser:
-        description: 'Browser'
-        required: true
-        default: 'chrome'
-        type: choice
-        options:
-          - chrome
-          - firefox
-
-      headless:
-        description: 'Headless mode'
-        required: true
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
 
 jobs:
-
   test:
-
     runs-on: ubuntu-latest
 
     steps:
 
-      # -------------------------
-      # Checkout
-      # -------------------------
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.branch || github.ref }}
 
-      # -------------------------
-      # Java
-      # -------------------------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -66,44 +136,43 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # -------------------------
-      # Run tests
-      # -------------------------
       - name: Run Tests
         run: |
           mvn clean test \
-            -Dbrowser=${{ github.event.inputs.browser || 'chrome' }} \
-            -Dheadless=${{ github.event.inputs.headless || 'true' }}
+            -Dbrowser=chrome \
+            -Dheadless=true
 
       # -------------------------
-      # Generate Allure report
+      # Generate Allure Report (IMPORTANT CHANGE)
       # -------------------------
       - name: Generate Allure Report
-        uses: simple-elf/allure-report-action@master
-        if: always()
-        with:
-          allure_results: allure-results
-          allure_report: allure-report
-          allure_history: allure-history
+        run: |
+          mvn allure:report
 
       # -------------------------
-      # Publish directly (IMPORTANT FIX)
+      # Fix: copy correct report folder
+      # -------------------------
+      - name: Prepare Pages folder
+        run: |
+          rm -rf gh-pages
+          mkdir gh-pages
+          cp -r target/site/allure-maven-plugin/* gh-pages/
+
+      # -------------------------
+      # Deploy
       # -------------------------
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        if: always()
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-report
+          publish_dir: gh-pages
           force_orphan: true
 
       # -------------------------
-      # Summary link
+      # Summary
       # -------------------------
       - name: Add report link
-        if: always()
         run: |
           echo "## Allure Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "👉 [Open Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
+          echo "👉 https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
