@@ -1,0 +1,9 @@
+{
+  "browser": "chrome",
+  "headless": true,
+  "baseUrl": "https://www.saucedemo.com/",
+  "implicitWaitSeconds": 10,
+  "pageLoadTimeoutSeconds": 30,
+  "username": "standard_user",
+  "password": "secret_sauce"
+}
