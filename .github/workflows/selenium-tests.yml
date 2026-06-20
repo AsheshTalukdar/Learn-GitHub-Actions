@@ -51,11 +51,17 @@ jobs:
 
     steps:
 
+      # ---------------------------
+      # Checkout source code
+      # ---------------------------
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
+      # ---------------------------
+      # Setup Java + Maven cache
+      # ---------------------------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -63,23 +69,28 @@ jobs:
           java-version: '17'
           cache: maven
 
+      # ---------------------------
+      # Run Selenium tests
+      # ---------------------------
       - name: Run Tests
         run: |
           mvn clean test \
             -Dbrowser=${{ github.event.inputs.browser || 'chrome' }} \
             -Dheadless=${{ github.event.inputs.headless || 'true' }}
 
-      - name: Create empty history folder if not exists
-        run: mkdir -p gh-pages
-
+      # ---------------------------
+      # Load previous Allure history (safe for first run)
+      # ---------------------------
       - name: Load previous report history
         uses: actions/checkout@v4
         continue-on-error: true
         with:
           ref: gh-pages
           path: gh-pages
-          fetch-depth: 1
 
+      # ---------------------------
+      # Generate Allure Report
+      # ---------------------------
       - name: Generate Allure Report
         uses: simple-elf/allure-report-action@master
         if: always()
@@ -88,6 +99,9 @@ jobs:
           allure_history: allure-history
           keep_reports: 20
 
+      # ---------------------------
+      # Upload artifact (backup)
+      # ---------------------------
       - name: Upload Allure Artifact
         uses: actions/upload-artifact@v4
         if: always()
@@ -96,6 +110,9 @@ jobs:
           path: allure-history
           retention-days: 20
 
+      # ---------------------------
+      # Publish Allure Report to GitHub Pages
+      # ---------------------------
       - name: Publish To GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: always()
@@ -103,7 +120,11 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
+          force_orphan: true
 
+      # ---------------------------
+      # Add report link in workflow summary
+      # ---------------------------
       - name: Add report link to summary
         if: always()
         run: |
